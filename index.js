@@ -4,7 +4,14 @@ const puppeteer = require('puppeteer');
 const app = express();
 app.use(express.json());
 
+// Health-check endpoint
+app.get('/', (req, res) => {
+  console.log('✅ Received GET /');
+  return res.json({ status: 'ok' });
+});
+
 app.post('/scrape', async (req, res) => {
+  console.log('✅ Received POST /scrape', req.body);
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'URL required' });
 
@@ -15,22 +22,17 @@ app.post('/scrape', async (req, res) => {
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
-        // these can help in some CI/container environments:
         '--disable-dev-shm-usage',
         '--single-process',
       ],
     });
     const page = await browser.newPage();
-
-    // Optional: if you need to pass cookies, uncomment and fill:
-    // await page.setCookie({ name: 'sessionid', value: 'YOUR_COOKIE_HERE', domain: '.indianexpress.com' });
-
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-
     const content = await page.evaluate(() =>
-      Array.from(document.querySelectorAll('p')).map(p => p.innerText).join('\n\n')
+      Array.from(document.querySelectorAll('p'))
+        .map(p => p.innerText)
+        .join('\n\n')
     );
-
     await browser.close();
     return res.json({ content });
   } catch (err) {
@@ -40,7 +42,5 @@ app.post('/scrape', async (req, res) => {
   }
 });
 
-// Health check endpoint
-app.get('/', (_req, res) => res.send({ status: 'ok' }));
-
-app.listen(3000, () => console.log('🚀 Puppeteer API listening on port 3000'));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`🚀 Puppeteer API listening on port ${PORT}`));
